@@ -74,9 +74,9 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
 
     required init?(coder aDecoder: NSCoder) {
         do {
-            displayName = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.displayNameKey) as! String
+            displayName = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.displayNameKey)! as String
             
-            subtitle = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.subtitleKey) as! String
+            subtitle = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.subtitleKey)! as String
             
             // Decode the bookmark into a URL.
             var bookmarkDataIsStale: ObjCBool = false
