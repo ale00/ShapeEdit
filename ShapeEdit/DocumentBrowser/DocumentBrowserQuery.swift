@@ -31,7 +31,7 @@ class DocumentBrowserQuery: NSObject {
     fileprivate let workerQueue: OperationQueue = {
         let workerQueue = OperationQueue()
         
-        workerQueue.name = "com.example.apple-samplecode.ShapeEdit.browserdatasource.workerQueue"
+        workerQueue.name = "com.nossa.ShapeEdit.browserdatasource.workerQueue"
 
         workerQueue.maxConcurrentOperationCount = 1
         

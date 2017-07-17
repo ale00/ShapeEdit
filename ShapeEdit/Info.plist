@@ -7,13 +7,15 @@
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleTypeIconFiles</key>
+			<array/>
 			<key>CFBundleTypeName</key>
 			<string>ShapeEditDocument</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.example.shape-doc</string>
+				<string>com.nossa.shape-doc</string>
 			</array>
 		</dict>
 	</array>
@@ -39,7 +41,7 @@
 	<true/>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.com.example.apple-samplecode.ShapeEdit</key>
+		<key>iCloud.$(CFBundleIdentifier)</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
@@ -92,7 +94,7 @@
 			<key>UTTypeDescription</key>
 			<string>ShapeEdit Document</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.example.shape-doc</string>
+			<string>com.nossa.shape-doc</string>
 			<key>UTTypeSize64IconFile</key>
 			<string>Icon@3x-1.png</string>
 			<key>UTTypeTagSpecification</key>

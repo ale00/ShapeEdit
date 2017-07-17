@@ -33,7 +33,7 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
     fileprivate let workerQueue: OperationQueue = {
         let coordinationQueue = OperationQueue()
         
-        coordinationQueue.name = "com.example.apple-samplecode.ShapeEdit.recentobjectsmanager.workerQueue"
+        coordinationQueue.name = "com.nossa.ShapeEdit.recentobjectsmanager.workerQueue"
         
         coordinationQueue.maxConcurrentOperationCount = 1
         

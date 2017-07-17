@@ -26,7 +26,7 @@ class ThumbnailCache {
     fileprivate let cache: NSCache = { () -> NSCache<AnyObject, AnyObject> in 
         let cache = NSCache<AnyObject, AnyObject>()
         
-        cache.name = "com.example.apple-samplecode.ShapeEdit.thumbnailcache.cache"
+        cache.name = "com.nossa.ShapeEdit.thumbnailcache.cache"
         cache.countLimit = 64
         
         return cache
@@ -35,7 +35,7 @@ class ThumbnailCache {
     fileprivate let workerQueue: OperationQueue = {
         let workerQueue = OperationQueue()
         
-        workerQueue.name = "com.example.apple-samplecode.ShapeEdit.thumbnailcache.workerQueue"
+        workerQueue.name = "com.nossa.ShapeEdit.thumbnailcache.workerQueue"
         
         workerQueue.maxConcurrentOperationCount = ThumbnailCache.concurrentThumbnailOperations
         

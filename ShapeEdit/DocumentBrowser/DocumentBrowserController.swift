@@ -39,7 +39,7 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
     fileprivate let coordinationQueue: OperationQueue = {
         let coordinationQueue = OperationQueue()
         
-        coordinationQueue.name = "com.example.apple-samplecode.ShapeEdit.documentbrowser.coordinationQueue"
+        coordinationQueue.name = "com.nossa.ShapeEdit.documentbrowser.coordinationQueue"
         
         return coordinationQueue
     }()
