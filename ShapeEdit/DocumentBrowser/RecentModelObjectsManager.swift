@@ -13,7 +13,7 @@ import Foundation
     We pass the updated list of results as well as a set of animations.
 */
 protocol RecentModelObjectsManagerDelegate: class {
-    func recentsManagerResultsDidChange(results: [RecentModelObject], animations: [DocumentBrowserAnimation])
+    func recentsManagerResultsDidChange(_ results: [RecentModelObject], animations: [DocumentBrowserAnimation])
 }
 
 /**
@@ -30,8 +30,8 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
     
     static let recentsKey = "recents"
     
-    private let workerQueue: NSOperationQueue = {
-        let coordinationQueue = NSOperationQueue()
+    fileprivate let workerQueue: OperationQueue = {
+        let coordinationQueue = OperationQueue()
         
         coordinationQueue.name = "com.example.apple-samplecode.ShapeEdit.recentobjectsmanager.workerQueue"
         
@@ -47,7 +47,7 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
                 If we already have results, we send them to the delegate as an
                 initial update.
             */
-            delegate?.recentsManagerResultsDidChange(recentModelObjects, animations: [.Reload])
+            delegate?.recentsManagerResultsDidChange(recentModelObjects, animations: [.reload])
         }
     }
     
@@ -66,16 +66,16 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
     
     // MARK: - Recent Saving / Loading
     
-    private func loadRecents() {
-        workerQueue.addOperationWithBlock {
-            let defaults = NSUserDefaults.standardUserDefaults()
+    fileprivate func loadRecents() {
+        workerQueue.addOperation {
+            let defaults = UserDefaults.standard
             
-            guard let loadedRecentData = defaults.objectForKey(RecentModelObjectsManager.recentsKey) as? [NSData] else {
+            guard let loadedRecentData = defaults.object(forKey: RecentModelObjectsManager.recentsKey) as? [Data] else {
                 return
             }
             
             let loadedRecents = loadedRecentData.flatMap { recentModelObjectData in
-                return NSKeyedUnarchiver.unarchiveObjectWithData(recentModelObjectData) as? RecentModelObject
+                return NSKeyedUnarchiver.unarchiveObject(with: recentModelObjectData) as? RecentModelObject
             }
             
             // Remove any existing recents we may have already stored in memory.
@@ -101,24 +101,24 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
                 }
             }
             
-            NSOperationQueue.mainQueue().addOperationWithBlock {
+            OperationQueue.main.addOperation {
                 // Notify our delegate that the initial recents were loaded.
-                self.delegate?.recentsManagerResultsDidChange(self.recentModelObjects, animations: [.Reload])
+                self.delegate?.recentsManagerResultsDidChange(self.recentModelObjects, animations: [.reload])
             }
         }
     }
     
-    private func saveRecents() {
+    fileprivate func saveRecents() {
         let recentModels = recentModelObjects.map { recentModelObject in
-            return NSKeyedArchiver.archivedDataWithRootObject(recentModelObject)
+            return NSKeyedArchiver.archivedData(withRootObject: recentModelObject)
         }
         
-        NSUserDefaults.standardUserDefaults().setObject(recentModels, forKey: RecentModelObjectsManager.recentsKey)
+        UserDefaults.standard.set(recentModels, forKey: RecentModelObjectsManager.recentsKey)
     }
     
     // MARK: - Recent List Management
     
-    private func removeRecentModelObject(recent: RecentModelObject) {
+    fileprivate func removeRecentModelObject(_ recent: RecentModelObject) {
         // Remove the file presenter so we stop getting notifications on the removed recent.
         NSFileCoordinator.removeFilePresenter(recent)
         
@@ -126,25 +126,25 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
             Remove the recent from the array and save the recents array to disk
             so they will reflect the correct state when the app is relaunched.
         */
-        guard let index = recentModelObjects.indexOf(recent) else { return }
+        guard let index = recentModelObjects.index(of: recent) else { return }
 
-        recentModelObjects.removeAtIndex(index)
+        recentModelObjects.remove(at: index)
 
         saveRecents()
     }
     
-    func addURLToRecents(URL: NSURL) {
-        workerQueue.addOperationWithBlock {
+    func addURLToRecents(_ URL: Foundation.URL) {
+        workerQueue.addOperation {
             // Add the recent to the recents manager.
             guard let recent = RecentModelObject(URL: URL) else { return }
 
             var animations = [DocumentBrowserAnimation]()
             
-            if let index = self.recentModelObjects.indexOf(recent) {
-                self.recentModelObjects.removeAtIndex(index)
+            if let index = self.recentModelObjects.index(of: recent) {
+                self.recentModelObjects.remove(at: index)
                 
                 if index != 0 {
-                    animations += [.Move(fromIndex: index, toIndex: 0)]
+                    animations += [.move(fromIndex: index, toIndex: 0)]
                 }
             }
             else {
@@ -152,19 +152,19 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
                 
                 NSFileCoordinator.addFilePresenter(recent)
                 
-                animations += [.Add(index: 0)]
+                animations += [.add(index: 0)]
             }
             
-            self.recentModelObjects.insert(recent, atIndex: 0)
+            self.recentModelObjects.insert(recent, at: 0)
             
             // Prune down the recent documents if there are too many.
             while self.recentModelObjects.count > RecentModelObjectsManager.maxRecentModelObjectCount {
                 self.removeRecentModelObject(self.recentModelObjects.last!)
                 
-                animations += [.Delete(index: self.recentModelObjects.count - 1)]
+                animations += [.delete(index: self.recentModelObjects.count - 1)]
             }
             
-            NSOperationQueue.mainQueue().addOperationWithBlock {
+            OperationQueue.main.addOperation {
                 self.delegate?.recentsManagerResultsDidChange(self.recentModelObjects, animations: animations)
             }
         
@@ -174,27 +174,27 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
     
     // MARK: - RecentModelObjectDelegate
     
-    func recentWasDeleted(recent: RecentModelObject) {
-        self.workerQueue.addOperationWithBlock {
-            guard let index = self.recentModelObjects.indexOf(recent) else { return }
+    func recentWasDeleted(_ recent: RecentModelObject) {
+        self.workerQueue.addOperation {
+            guard let index = self.recentModelObjects.index(of: recent) else { return }
             
             self.removeRecentModelObject(recent)
             
-            NSOperationQueue.mainQueue().addOperationWithBlock {
+            OperationQueue.main.addOperation {
                 self.delegate?.recentsManagerResultsDidChange(self.recentModelObjects, animations: [
-                    .Delete(index: index)
+                    .delete(index: index)
                 ])
             }
         }
     }
     
-    func recentNeedsReload(recent: RecentModelObject) {
-        self.workerQueue.addOperationWithBlock {
-            guard let index = self.recentModelObjects.indexOf(recent) else { return }
+    func recentNeedsReload(_ recent: RecentModelObject) {
+        self.workerQueue.addOperation {
+            guard let index = self.recentModelObjects.index(of: recent) else { return }
             
-            NSOperationQueue.mainQueue().addOperationWithBlock {
+            OperationQueue.main.addOperation {
                 self.delegate?.recentsManagerResultsDidChange(self.recentModelObjects, animations: [
-                    .Update(index: index)
+                    .update(index: index)
                 ])
             }
         }

@@ -13,8 +13,8 @@ import Foundation
     about changes to this recent.
 */
 protocol RecentModelObjectDelegate: class {
-    func recentWasDeleted(recent: RecentModelObject)
-    func recentNeedsReload(recent: RecentModelObject)
+    func recentWasDeleted(_ recent: RecentModelObject)
+    func recentNeedsReload(_ recent: RecentModelObject)
 }
 
 /**
@@ -27,28 +27,28 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
 
     weak var delegate: RecentModelObjectDelegate?
     
-    private(set) var URL: NSURL
+    fileprivate(set) var URL: Foundation.URL
     
-    private(set) var displayName = ""
+    fileprivate(set) var displayName = ""
     
-    private(set) var subtitle = ""
+    fileprivate(set) var subtitle = ""
     
-    private(set) var bookmarkDataNeedsSave = false
+    fileprivate(set) var bookmarkDataNeedsSave = false
     
-    private var bookmarkData: NSData?
+    fileprivate var bookmarkData: Data?
     
-    private var isSecurityScoped = false
+    fileprivate var isSecurityScoped = false
     
     static let displayNameKey = "displayName"
     static let subtitleKey = "subtitle"
     static let bookmarkKey = "bookmark"
 
-    var presentedItemURL: NSURL? {
+    var presentedItemURL: Foundation.URL? {
         return URL
     }
 
-    var presentedItemOperationQueue: NSOperationQueue {
-        return NSOperationQueue.mainQueue()
+    var presentedItemOperationQueue: OperationQueue {
+        return OperationQueue.main
     }
     
     deinit {
@@ -57,7 +57,7 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
 
     // MARK: - NSCoding
     
-    required init?(URL: NSURL) {
+    required init?(URL: Foundation.URL) {
         self.URL = URL
         
         do {
@@ -74,20 +74,20 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
 
     required init?(coder aDecoder: NSCoder) {
         do {
-            displayName = aDecoder.decodeObjectOfClass(NSString.self, forKey: RecentModelObject.displayNameKey) as! String
+            displayName = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.displayNameKey) as! String
             
-            subtitle = aDecoder.decodeObjectOfClass(NSString.self, forKey: RecentModelObject.subtitleKey) as! String
+            subtitle = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.subtitleKey) as! String
             
             // Decode the bookmark into a URL.
             var bookmarkDataIsStale: ObjCBool = false
 
-            guard let bookmark = aDecoder.decodeObjectOfClass(NSData.self, forKey: RecentModelObject.bookmarkKey) else {
-                throw ShapeEditError.BookmarkResolveFailed
+            guard let bookmark = aDecoder.decodeObject(of: NSData.self, forKey: RecentModelObject.bookmarkKey) else {
+                throw ShapeEditError.bookmarkResolveFailed
             }
             
-            bookmarkData = bookmark
+            bookmarkData = bookmark as Data
             
-            URL = try NSURL(byResolvingBookmarkData: bookmark, options: .WithoutUI, relativeToURL: nil, bookmarkDataIsStale: &bookmarkDataIsStale)
+            URL = try (NSURL(resolvingBookmarkData: bookmark as Data, options: .withoutUI, relativeTo: nil, bookmarkDataIsStale: &bookmarkDataIsStale) as URL)
             
             /*
                 The URL is security-scoped for external documents, which live outside
@@ -95,7 +95,7 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
             */
             isSecurityScoped = URL.startAccessingSecurityScopedResource()
             
-            if bookmarkDataIsStale {
+            if bookmarkDataIsStale.boolValue {
                 self.bookmarkDataNeedsSave = true
                 
                 print("\(URL) is stale.")
@@ -113,11 +113,11 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
         catch let error {
             print("bookmark for \(displayName) failed to resolve: \(error)")
             
-            URL = NSURL()
+            URL = Foundation.URL(fileURLWithPath: NSTemporaryDirectory())
             
             bookmarkDataNeedsSave = false
             
-            self.bookmarkData = NSData()
+            self.bookmarkData = Data()
             
             super.init()
             
@@ -125,11 +125,11 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
         }
     }
     
-    func encodeWithCoder(aCoder: NSCoder) {
+    func encodeWithCoder(_ aCoder: NSCoder) {
         do {
-            aCoder.encodeObject(displayName, forKey: RecentModelObject.displayNameKey)
+            aCoder.encode(displayName, forKey: RecentModelObject.displayNameKey)
             
-            aCoder.encodeObject(subtitle, forKey: RecentModelObject.subtitleKey)
+            aCoder.encode(subtitle, forKey: RecentModelObject.subtitleKey)
             
             if bookmarkDataNeedsSave {
                 /*
@@ -137,12 +137,12 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
                     to mark the bookmark as suitable for a bookmark file or it won't
                     resolve properly.
                 */
-                bookmarkData = try URL.bookmarkDataWithOptions(.SuitableForBookmarkFile, includingResourceValuesForKeys: nil, relativeToURL: nil)
+                bookmarkData = try (URL as NSURL).bookmarkData(options: .suitableForBookmarkFile, includingResourceValuesForKeys: nil, relativeTo: nil)
                 
                 self.bookmarkDataNeedsSave = false
             }
             
-            aCoder.encodeObject(bookmarkData, forKey: RecentModelObject.bookmarkKey)
+            aCoder.encode(bookmarkData, forKey: RecentModelObject.bookmarkKey)
         }
         catch {
             print("bookmark for \(displayName) failed to encode: \(error).")
@@ -151,7 +151,7 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
 
     // MARK: - NSFilePresenter Notifications
     
-    func accommodatePresentedItemDeletionWithCompletionHandler(completionHandler: NSError? -> Void) {
+    func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
         /*
             Notify our delegate that the recent was deleted, then call the completion 
             handler to allow for the deletion to go through.
@@ -161,7 +161,7 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
         completionHandler(nil)
     }
 
-    func presentedItemDidMoveToURL(newURL: NSURL) {
+    func presentedItemDidMove(to newURL: URL) {
         /*
             Update our presented item URL to the new location, then notify our
             delegate that the recent needs to be refreshed in the UI.
@@ -185,24 +185,24 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
     
     // MARK: - Initialization Support
    
-    private func refreshNameAndSubtitle() throws {
+    fileprivate func refreshNameAndSubtitle() throws {
         var refreshedName: AnyObject?
 
-        try URL.getPromisedItemResourceValue(&refreshedName, forKey: NSURLLocalizedNameKey)
+        try (URL as NSURL).getPromisedItemResourceValue(&refreshedName, forKey: URLResourceKey.localizedNameKey)
         
         displayName = refreshedName as! String
         
-        let fileManager = NSFileManager.defaultManager()
+        let fileManager = FileManager.default
         
-        if let ubiquitousContainer = fileManager.URLForUbiquityContainerIdentifier(nil) {
-            var relationship: NSURLRelationship = .Other
+        if let ubiquitousContainer = fileManager.url(forUbiquityContainerIdentifier: nil) {
+            var relationship: FileManager.URLRelationship = .other
             
-            try fileManager.getRelationship(&relationship, ofDirectoryAtURL: ubiquitousContainer, toItemAtURL: URL)
+            try fileManager.getRelationship(&relationship, ofDirectoryAt: ubiquitousContainer, toItemAt: URL)
             
-            if relationship != .Contains {
+            if relationship != .contains {
                 var externalContainerName: AnyObject?
                 
-                try URL.getPromisedItemResourceValue(&externalContainerName, forKey: NSURLUbiquitousItemContainerDisplayNameKey)
+                try (URL as NSURL).getPromisedItemResourceValue(&externalContainerName, forKey: URLResourceKey.ubiquitousItemContainerDisplayNameKey)
                 
                 subtitle = "in \(externalContainerName as! String)"
             }
@@ -211,21 +211,21 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
             }
         }
         else {
-            throw ShapeEditError.SignedOutOfiCloud
+            throw ShapeEditError.signedOutOfiCloud
         }
     }
     
     /// Two RecentModelObjects are equal iff their urls are equal.
-    override func isEqual(object: AnyObject?) -> Bool {
+    override func isEqual(_ object: Any?) -> Bool {
         guard let other = object as? RecentModelObject else {
             return false
         }
         
-        return other.URL.isEqual(URL)
+        return (other.URL == URL)
     }
     
     /// Hash method implemented to match `isEqual(_:)`'s constraints.
     override var hash: Int {
-        return URL.hash
+        return (URL as NSURL).hash
     }
 }

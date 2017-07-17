@@ -18,7 +18,7 @@ class DocumentViewController: UIViewController {
 
     var document: ShapeDocument!
     
-    var documentURL: NSURL? {
+    var documentURL: URL? {
         didSet {
             guard let url = documentURL else { return }
 
@@ -26,7 +26,7 @@ class DocumentViewController: UIViewController {
             
             do {
                 var displayName: AnyObject?
-                try url.getPromisedItemResourceValue(&displayName, forKey: NSURLLocalizedNameKey)
+                try (url as NSURL).getPromisedItemResourceValue(&displayName, forKey: URLResourceKey.localizedNameKey)
                 title = displayName as? String
             }
             catch {
@@ -45,22 +45,22 @@ class DocumentViewController: UIViewController {
 
     // MARK: - View Controller
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         shapeSelector.selectedSegmentIndex = UISegmentedControlNoSegment
-        shapeSelector.userInteractionEnabled = false
+        shapeSelector.isUserInteractionEnabled = false
         
-        progressView.hidden = false
+        progressView.isHidden = false
         
-        documentObserver = NSNotificationCenter.defaultCenter().addObserverForName(UIDocumentStateChangedNotification, object: document, queue: nil) { _ in
-            if self.document.documentState.contains(.ProgressAvailable) {
+        documentObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name.UIDocumentStateChanged, object: document, queue: nil) { _ in
+            if self.document.documentState.contains(.progressAvailable) {
                 self.progressView.observedProgress = self.document.progress
             }
         }
 
         
-        document.openWithCompletionHandler { success in
+        document.open { success in
             if success {
                 self.updateView()
                 
@@ -77,33 +77,33 @@ class DocumentViewController: UIViewController {
             else {
                 let title = self.title!
 
-                let alert = UIAlertController(title: "Unable to Load \"\(title)\"", message: "Opening the document failed", preferredStyle: .Alert)
+                let alert = UIAlertController(title: "Unable to Load \"\(title)\"", message: "Opening the document failed", preferredStyle: .alert)
 
-                let alertAction = UIAlertAction(title: "Dismiss", style: .Default) { action in
-                    self.navigationController?.popToRootViewControllerAnimated(true)
+                let alertAction = UIAlertAction(title: "Dismiss", style: .default) { action in
+                    self.navigationController?.popToRootViewController(animated: true)
                 }
                 
                 alert.addAction(alertAction)
                     
-                self.presentViewController(alert, animated: true, completion: nil)
+                self.present(alert, animated: true, completion: nil)
             }
             
             if let observer = self.documentObserver {
-                NSNotificationCenter.defaultCenter().removeObserver(observer)
+                NotificationCenter.default.removeObserver(observer)
                 self.documentObserver = nil
             }
             
-            self.progressView.hidden = true
+            self.progressView.isHidden = true
         }
     }
     
-    override func viewDidDisappear(animated: Bool) {
+    override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
-        document.closeWithCompletionHandler(nil)
+        document.close(completionHandler: nil)
     }
     
-    private var segmentedControllerTintColor: UIColor {
+    fileprivate var segmentedControllerTintColor: UIColor {
         let originalColor = document.color
         
         var red:   CGFloat = 0
@@ -114,14 +114,14 @@ class DocumentViewController: UIViewController {
         return UIColor(red: red * 0.7, green: green * 0.7, blue: blue * 0.7, alpha: 1)
     }
 
-    @IBAction func shapeChanged(sender: UISegmentedControl?) {
+    @IBAction func shapeChanged(_ sender: UISegmentedControl?) {
         // The shape was modified using the shapeSelector, so save the selected value.
         let shapeRawValue = shapeSelector.selectedSegmentIndex
         
         guard let shape = ShapeDocument.Shape(rawValue: shapeRawValue) else { return }
         
         document.shape = shape
-        document.updateChangeCount(.Done)
+        document.updateChangeCount(.done)
         
         shapeSelector.tintColor = segmentedControllerTintColor
         
@@ -132,7 +132,7 @@ class DocumentViewController: UIViewController {
         // Update the selected segment to be what we loaded from disk.
         if let index = document.shape?.rawValue {
             shapeSelector.selectedSegmentIndex = index
-            shapeSelector.userInteractionEnabled = true
+            shapeSelector.isUserInteractionEnabled = true
         }
         else {
             shapeSelector.selectedSegmentIndex = UISegmentedControlNoSegment

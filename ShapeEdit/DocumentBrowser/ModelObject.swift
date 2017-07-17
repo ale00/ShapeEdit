@@ -13,7 +13,7 @@ protocol ModelObject: class {
     
     var subtitle: String { get }
     
-    var URL: NSURL { get }
+    var URL: Foundation.URL { get }
 }
 
 /**
@@ -21,11 +21,11 @@ protocol ModelObject: class {
     can add, remove, update or move a row.
 */
 enum DocumentBrowserAnimation {
-    case Reload
-    case Delete(index: Int)
-    case Add(index: Int)
-    case Update(index: Int)
-    case Move(fromIndex: Int, toIndex: Int)
+    case reload
+    case delete(index: Int)
+    case add(index: Int)
+    case update(index: Int)
+    case move(fromIndex: Int, toIndex: Int)
 }
 
 /**
@@ -36,19 +36,19 @@ extension DocumentBrowserAnimation: Equatable { }
 
 func ==(lhs: DocumentBrowserAnimation, rhs: DocumentBrowserAnimation) -> Bool {
     switch (lhs, rhs) {
-        case (.Reload, .Reload):
+        case (.reload, .reload):
             return true
             
-        case let (.Delete(left), .Delete(right)) where left == right:
+        case let (.delete(left), .delete(right)) where left == right:
             return true
             
-        case let (.Add(left), .Add(right)) where left == right:
+        case let (.add(left), .add(right)) where left == right:
             return true
             
-        case let (.Update(left), .Update(right)) where left == right:
+        case let (.update(left), .update(right)) where left == right:
             return true
             
-        case let (.Move(leftFrom, leftTo), .Move(rightFrom, rightTo)) where leftFrom == rightFrom && leftTo == rightTo:
+        case let (.move(leftFrom, leftTo), .move(rightFrom, rightTo)) where leftFrom == rightFrom && leftTo == rightTo:
             return true
             
         default:
@@ -63,19 +63,19 @@ func ==(lhs: DocumentBrowserAnimation, rhs: DocumentBrowserAnimation) -> Bool {
 extension DocumentBrowserAnimation: CustomDebugStringConvertible {
     var debugDescription: String {
         switch self {
-            case .Reload:
+            case .reload:
                 return "Reload"
                 
-            case .Delete(let i):
+            case .delete(let i):
                 return "Delete(\(i))"
                 
-            case .Add(let i):
+            case .add(let i):
                 return "Add(\(i))"
                 
-            case .Update(let i):
+            case .update(let i):
                 return "Update(\(i))"
                 
-            case .Move(let f, let t):
+            case .move(let f, let t):
                 return "Move(\(f)->\(t))"
         }
     }

@@ -16,17 +16,17 @@ import UIKit
 class DocumentBrowserModelObject: NSObject, ModelObject {
     // MARK: - Properties
 
-    private(set) var displayName: String
+    fileprivate(set) var displayName: String
     
-    private(set) var subtitle = ""
+    fileprivate(set) var subtitle = ""
     
-    private(set) var URL: NSURL
+    fileprivate(set) var URL: Foundation.URL
 
-    private(set) var metadataItem: NSMetadataItem
+    fileprivate(set) var metadataItem: NSMetadataItem
 
     // MARK: - Initialization
     required init(item: NSMetadataItem) {
-        displayName = item.valueForAttribute(NSMetadataItemDisplayNameKey) as! String
+        displayName = item.value(forAttribute: NSMetadataItemDisplayNameKey) as! String
         
         /*
             External documents are not located in the app's ubiquitous container.
@@ -37,9 +37,8 @@ class DocumentBrowserModelObject: NSObject, ModelObject {
             Throughout the system, the name of the document is decorated with the
             source container's name.
         */
-        if let isExternal = item.valueForAttribute(NSMetadataUbiquitousItemIsExternalDocumentKey) as? Bool,
-               containerName = item.valueForAttribute(NSMetadataUbiquitousItemContainerDisplayNameKey) as? String
-               where isExternal {
+        if let isExternal = item.value(forAttribute: NSMetadataUbiquitousItemIsExternalDocumentKey) as? Bool,
+               let containerName = item.value(forAttribute: NSMetadataUbiquitousItemContainerDisplayNameKey) as? String, isExternal {
             subtitle = "in \(containerName)"
         }
         
@@ -48,7 +47,7 @@ class DocumentBrowserModelObject: NSObject, ModelObject {
             If the item is renamed or moved, the value for `NSMetadataItemURLKey`
             might change.
         */
-        URL = item.valueForAttribute(NSMetadataItemURLKey) as! NSURL
+        URL = item.value(forAttribute: NSMetadataItemURLKey) as! Foundation.URL
         
         metadataItem = item
     }
@@ -60,7 +59,7 @@ class DocumentBrowserModelObject: NSObject, ModelObject {
         We use the metadata item instead of other properties like the URL to compare
         equality in order to track documents across renames.
     */
-    override func isEqual(object: AnyObject?) -> Bool {
+    override func isEqual(_ object: Any?) -> Bool {
         guard let other = object as? DocumentBrowserModelObject else {
             return false
         }

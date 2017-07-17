@@ -31,25 +31,25 @@ class CameraState: NSObject, NSCoding {
         position = SCNVector3(x: 0, y: 0, z: 4)
         rotation = SCNVector4()
         
-        position.x = aDecoder.decodeFloatForKey("x")
-        position.y = aDecoder.decodeFloatForKey("y")
-        position.z = aDecoder.decodeFloatForKey("z")
-        rotation.x = aDecoder.decodeFloatForKey("rx")
-        rotation.y = aDecoder.decodeFloatForKey("ry")
-        rotation.z = aDecoder.decodeFloatForKey("rz")
-        rotation.w = aDecoder.decodeFloatForKey("rw")
+        position.x = aDecoder.decodeFloat(forKey: "x")
+        position.y = aDecoder.decodeFloat(forKey: "y")
+        position.z = aDecoder.decodeFloat(forKey: "z")
+        rotation.x = aDecoder.decodeFloat(forKey: "rx")
+        rotation.y = aDecoder.decodeFloat(forKey: "ry")
+        rotation.z = aDecoder.decodeFloat(forKey: "rz")
+        rotation.w = aDecoder.decodeFloat(forKey: "rw")
         
         super.init()
     }
     
-    func encodeWithCoder(aCoder: NSCoder) {
-        aCoder.encodeFloat(position.x, forKey: "x")
-        aCoder.encodeFloat(position.y, forKey: "y")
-        aCoder.encodeFloat(position.z, forKey: "z")
-        aCoder.encodeFloat(rotation.x, forKey: "rx")
-        aCoder.encodeFloat(rotation.y, forKey: "ry")
-        aCoder.encodeFloat(rotation.z, forKey: "rz")
-        aCoder.encodeFloat(rotation.w, forKey: "rw")
+    func encode(with aCoder: NSCoder) {
+        aCoder.encode(position.x, forKey: "x")
+        aCoder.encode(position.y, forKey: "y")
+        aCoder.encode(position.z, forKey: "z")
+        aCoder.encode(rotation.x, forKey: "rx")
+        aCoder.encode(rotation.y, forKey: "ry")
+        aCoder.encode(rotation.z, forKey: "rz")
+        aCoder.encode(rotation.w, forKey: "rw")
     }
 }
 
@@ -62,12 +62,12 @@ class ShapeDocument: UIDocument {
     // MARK: - Types
     
     enum Shape: Int {
-        case Sphere
-        case Cube
-        case Cylinder
-        case Cone
-        case Torus
-        case Pyramid
+        case sphere
+        case cube
+        case cylinder
+        case cone
+        case torus
+        case pyramid
     }
     
     // MARK: - Declarations
@@ -82,57 +82,57 @@ class ShapeDocument: UIDocument {
 
     // MARK: - Document loading override
     
-    override func loadFromContents(contents: AnyObject, ofType typeName: String?) throws {
-        guard let data = contents as? NSData else {
-            fatalError("Cannot handle contents of type \(contents.dynamicType).")
+    override func load(fromContents contents: Any, ofType typeName: String?) throws {
+        guard let data = contents as? Data else {
+            fatalError("Cannot handle contents of type \(type(of: (contents) as AnyObject)).")
         }
 
         // Our document format is a simple plist.
-        guard let plist = try NSPropertyListSerialization.propertyListWithData(data, options: .MutableContainersAndLeaves, format: nil) as? [String: AnyObject] else {
-            throw ShapeEditError.PlistReadFailed
+        guard let plist = try PropertyListSerialization.propertyList(from: data, options: .mutableContainersAndLeaves, format: nil) as? [String: AnyObject] else {
+            throw ShapeEditError.plistReadFailed
         }
 
         // The shape is saved as a number corresponding to our enum.
         guard let shapeRawValue = plist[ShapeDocument.shapeKey] as? Int else {
-            throw ShapeEditError.NoShape
+            throw ShapeEditError.noShape
         }
         
         shape = Shape(rawValue: shapeRawValue)
         
         // The camera state is saved using NSCoding.
-        if let cameraStateData = plist[ShapeDocument.cameraStateKey] as? NSData,
-              cameraState = NSKeyedUnarchiver.unarchiveObjectWithData(cameraStateData) as? CameraState {
+        if let cameraStateData = plist[ShapeDocument.cameraStateKey] as? Data,
+              let cameraState = NSKeyedUnarchiver.unarchiveObject(with: cameraStateData) as? CameraState {
             self.cameraState = cameraState
         }
         else {
             // This is a new document so save it to disk to generate the thumbnail.
-            updateChangeCount(.Done)
+            updateChangeCount(.done)
         }
     }
 
     // MARK: - Document Saving Override
 
-    override func contentsForType(typeName: String) throws -> AnyObject {
+    override func contents(forType typeName: String) throws -> Any {
         /*
             Saving the document consists of creating the property list, then 
             creating an `NSData` object using plist serialization.
         */
         
-        let cameraStateData = NSKeyedArchiver.archivedDataWithRootObject(cameraState)
+        let cameraStateData = NSKeyedArchiver.archivedData(withRootObject: cameraState)
         
         guard let shapeRawValue = shape?.rawValue else {
-            throw ShapeEditError.NoShape
+            throw ShapeEditError.noShape
         }
         
-        let plist: [NSObject: AnyObject] = [
+        let plist: [AnyHashable: Any] = [
             ShapeDocument.shapeKey: shapeRawValue,
             ShapeDocument.cameraStateKey: cameraStateData
         ]
 
-        return try NSPropertyListSerialization.dataWithPropertyList(plist, format: .BinaryFormat_v1_0, options: 0)
+        return try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
     }
 
-    override func fileAttributesToWriteToURL(url: NSURL, forSaveOperation saveOperation: UIDocumentSaveOperation) throws -> [NSObject: AnyObject] {
+    override func fileAttributesToWrite(to url: URL, for saveOperation: UIDocumentSaveOperation) throws -> [AnyHashable: Any] {
         let aspectRatio = 220.0 / 270.0
 
         let thumbnailSize = CGSize(width: CGFloat(1024.0 * aspectRatio), height: 1024.0)
@@ -140,22 +140,22 @@ class ShapeDocument: UIDocument {
         let image = renderThumbnailOfSize(thumbnailSize)
 
         return [
-            NSURLHasHiddenExtensionKey: true,
-            NSURLThumbnailDictionaryKey: [
-                NSThumbnail1024x1024SizeKey: image
+            URLResourceKey.hasHiddenExtensionKey: true,
+            URLResourceKey.thumbnailDictionaryKey: [
+                URLThumbnailDictionaryItem.NSThumbnail1024x1024SizeKey: image
             ]
         ]
     }
     
     // MARK: - View Interaction
     
-    func updateCameraState(node: SCNNode) {
+    func updateCameraState(_ node: SCNNode) {
         // Called by the view after the user has changed the camera state.
         cameraState.position = node.position
         
         cameraState.rotation = node.rotation
         
-        updateChangeCount(.Done)
+        updateChangeCount(.done)
     }
     
     // MARK: - Thumbnail Generation
@@ -163,33 +163,33 @@ class ShapeDocument: UIDocument {
     var color: UIColor {
         switch shape {
             case nil:
-                return UIColor.grayColor()
+                return UIColor.gray
                 
-            case .Sphere?:
+            case .sphere?:
                 return UIColor(red: 253/255, green: 61/255, blue: 57/255, alpha: 1)
                 
-            case .Cube?:
+            case .cube?:
                 return UIColor(red: 60/255, green: 171/255, blue: 219/255, alpha: 1)
                 
-            case .Cylinder?:
+            case .cylinder?:
                 return UIColor(red: 83/255, green: 216/255, blue: 106/255, alpha: 1)
                 
-            case .Cone?:
+            case .cone?:
                 return UIColor(red: 89/255, green: 91/255, blue: 212/255, alpha: 1)
                 
-            case .Torus?:
+            case .torus?:
                 return UIColor(red: 255/255, green: 204/255, blue: 0/255, alpha: 1)
                 
-            case .Pyramid?:
+            case .pyramid?:
                 return UIColor(red: 254/255, green: 149/255, blue: 38/255, alpha: 1)
         }
     }
     
     var backgroundColor: UIColor {
-        return color.colorWithAlphaComponent(0.3)
+        return color.withAlphaComponent(0.3)
     }
     
-    func setSceneOnRenderer(renderer: SCNSceneRenderer) {
+    func setSceneOnRenderer(_ renderer: SCNSceneRenderer) {
         let node: SCNNode
         let geometry: SCNGeometry
         
@@ -197,22 +197,22 @@ class ShapeDocument: UIDocument {
             case nil:
                 geometry = SCNGeometry()
             
-            case .Sphere?:
+            case .sphere?:
                 geometry = SCNSphere(radius: 1)
             
-            case .Cube?:
+            case .cube?:
                 geometry = SCNBox(width: 2, height: 2, length: 2, chamferRadius: 0.1)
             
-            case .Cylinder?:
+            case .cylinder?:
                 geometry = SCNCylinder(radius: 0.75, height: 2)
             
-            case .Cone?:
+            case .cone?:
                 geometry = SCNCone(topRadius: 0.5, bottomRadius: 1.5, height: 1.5)
             
-            case .Torus?:
+            case .torus?:
                 geometry = SCNTorus(ringRadius: 1.0, pipeRadius: 0.2)
             
-            case .Pyramid?:
+            case .pyramid?:
                 geometry = SCNPyramid(width: 1.5, height: 1.5, length: 1.5)
         }
         
@@ -233,7 +233,7 @@ class ShapeDocument: UIDocument {
         
         let ambientLight = SCNLight()
         let ambientLightNode = SCNNode()
-        ambientLight.type = SCNLightTypeAmbient
+        ambientLight.type = SCNLight.LightType.ambient
         ambientLight.color = UIColor(white: 0.3, alpha: 1)
         ambientLightNode.light = ambientLight
         scene.rootNode.addChildNode(ambientLightNode);
@@ -244,7 +244,7 @@ class ShapeDocument: UIDocument {
         renderer.pointOfView = pov
     }
     
-    func renderThumbnailOfSize(size: CGSize) -> UIImage {
+    func renderThumbnailOfSize(_ size: CGSize) -> UIImage {
         /*
             We want to create a thumbnail while running on the background thread.
             The obvious choice would be to use `SCNView`'s snapshot method, but we
@@ -259,17 +259,17 @@ class ShapeDocument: UIDocument {
         let height = Int(size.height)
         
         // Create and setup a context and renderer.
-        let glContext = EAGLContext(API: .OpenGLES2)!
+        let glContext = EAGLContext(api: .openGLES2)!
         let renderer = SCNRenderer(context: glContext, options: [:])
         renderer.autoenablesDefaultLighting = true
         setSceneOnRenderer(renderer)
         
         // Make the context current.
-        let previousContext = EAGLContext.currentContext()
+        let previousContext = EAGLContext.current()
         defer {
-            EAGLContext.setCurrentContext(previousContext)
+            EAGLContext.setCurrent(previousContext)
         }
-        EAGLContext.setCurrentContext(glContext)
+        EAGLContext.setCurrent(glContext)
         
         // Create our frame buffer.
         var frameBuffer: GLuint = 0
@@ -312,7 +312,7 @@ class ShapeDocument: UIDocument {
         // Set our viewport, clear out the buffers and render.
         glViewport(0, 0, GLsizei(width), GLsizei(height))
         glClear(GLbitfield(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT))
-        renderer.renderAtTime(0.0)
+        renderer.render(atTime: 0.0)
         
         // Read the contents of our framebuffer into an `NSMutableData`.
         
@@ -327,13 +327,13 @@ class ShapeDocument: UIDocument {
         
         // Create a `CGImage` off that data.
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let dataProvider = CGDataProviderCreateWithCFData(imageBits)
+        let dataProvider = CGDataProvider(data: imageBits)
         
-        let cgBitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.Last.rawValue)
-        let cgImage = CGImageCreate(width, height, bitsPerComponent, componentsPerPixel * bitsPerComponent, width * componentsPerPixel, colorSpace, cgBitmapInfo, dataProvider!, nil, false, .RenderingIntentDefault)!
+        let cgBitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)
+        let cgImage = CGImage(width: width, height: height, bitsPerComponent: bitsPerComponent, bitsPerPixel: componentsPerPixel * bitsPerComponent, bytesPerRow: width * componentsPerPixel, space: colorSpace, bitmapInfo: cgBitmapInfo, provider: dataProvider!, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
         
         // Flip the image to match our Editor view's coordinate system.
-        let image = UIImage(CGImage: cgImage)
+        let image = UIImage(cgImage: cgImage)
         
         UIGraphicsBeginImageContextWithOptions(image.size, false, 1.0)
         
@@ -341,10 +341,10 @@ class ShapeDocument: UIDocument {
         
         let flipVertical = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: image.size.height)
         
-        CGContextConcatCTM(context!, flipVertical)
+        context!.concatenate(flipVertical)
         
         let imageRect = CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height)
-        image.drawInRect(imageRect)
+        image.draw(in: imageRect)
         
         let flippedImage = UIGraphicsGetImageFromCurrentImageContext()
         

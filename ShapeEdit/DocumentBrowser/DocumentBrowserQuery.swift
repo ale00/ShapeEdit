@@ -13,7 +13,7 @@ import UIKit
     pass the updated list of results as well as a set of animations.
 */
 protocol DocumentBrowserQueryDelegate: class {
-    func documentBrowserQueryResultsDidChangeWithResults(results: [DocumentBrowserModelObject], animations: [DocumentBrowserAnimation])
+    func documentBrowserQueryResultsDidChangeWithResults(_ results: [DocumentBrowserModelObject], animations: [DocumentBrowserAnimation])
 }
 
 /**
@@ -24,12 +24,12 @@ protocol DocumentBrowserQueryDelegate: class {
 class DocumentBrowserQuery: NSObject {
     // MARK: - Properties
 
-    private var metadataQuery: NSMetadataQuery
+    fileprivate var metadataQuery: NSMetadataQuery
     
-    private var previousQueryObjects: NSOrderedSet?
+    fileprivate var previousQueryObjects: NSOrderedSet?
     
-    private let workerQueue: NSOperationQueue = {
-        let workerQueue = NSOperationQueue()
+    fileprivate let workerQueue: OperationQueue = {
+        let workerQueue = OperationQueue()
         
         workerQueue.name = "com.example.apple-samplecode.ShapeEdit.browserdatasource.workerQueue"
 
@@ -44,7 +44,7 @@ class DocumentBrowserQuery: NSObject {
                 If we already have results, we send them to the delegate as an
                 initial update.
             */
-            workerQueue.addOperationWithBlock {
+            workerQueue.addOperation {
                 guard let results = self.previousQueryObjects else { return }
                 
                 self.updateWithResults(results, removedResults: NSOrderedSet(), addedResults: NSOrderedSet(), changedResults: NSOrderedSet())
@@ -81,16 +81,16 @@ class DocumentBrowserQuery: NSObject {
 
         super.init()
 
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(DocumentBrowserQuery.finishGathering(_:)), name: NSMetadataQueryDidFinishGatheringNotification, object: metadataQuery)
+        NotificationCenter.default.addObserver(self, selector: #selector(DocumentBrowserQuery.finishGathering(_:)), name: NSNotification.Name.NSMetadataQueryDidFinishGathering, object: metadataQuery)
 
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(DocumentBrowserQuery.queryUpdated(_:)), name: NSMetadataQueryDidUpdateNotification, object: metadataQuery)
+        NotificationCenter.default.addObserver(self, selector: #selector(DocumentBrowserQuery.queryUpdated(_:)), name: NSNotification.Name.NSMetadataQueryDidUpdate, object: metadataQuery)
 
-        metadataQuery.startQuery()
+        metadataQuery.start()
     }
     
     // MARK: - Notifications
 
-    @objc func queryUpdated(notification: NSNotification) {
+    @objc func queryUpdated(_ notification: Notification) {
         let changedMetadataItems = notification.userInfo?[NSMetadataQueryUpdateChangedItemsKey] as? [NSMetadataItem]
         
         let removedMetadataItems = notification.userInfo?[NSMetadataQueryUpdateRemovedItemsKey] as? [NSMetadataItem]
@@ -106,7 +106,7 @@ class DocumentBrowserQuery: NSObject {
         updateWithResults(newResults, removedResults: removedResults, addedResults: addedResults, changedResults: changedResults)
     }
 
-    @objc func finishGathering(notification: NSNotification) {
+    @objc func finishGathering(_ notification: Notification) {
         metadataQuery.disableUpdates()
         
         let metadataQueryResults = metadataQuery.results as! [NSMetadataItem]
@@ -120,19 +120,19 @@ class DocumentBrowserQuery: NSObject {
 
     // MARK: - Result handling/animations
 
-    private func buildModelObjectSet(objects: [NSMetadataItem]) -> NSOrderedSet {
+    fileprivate func buildModelObjectSet(_ objects: [NSMetadataItem]) -> NSOrderedSet {
         // Create an ordered set of model objects.
         var array = objects.map { DocumentBrowserModelObject(item: $0) }
 
         // Sort the array by filename.
-        array.sortInPlace { $0.displayName < $1.displayName }
+        array.sort { $0.displayName < $1.displayName }
 
         let results = NSMutableOrderedSet(array: array)
 
         return results
     }
     
-    private func buildQueryResultSet() -> NSOrderedSet {
+    fileprivate func buildQueryResultSet() -> NSOrderedSet {
         /*
            Create an ordered set of model objects from the query's current
            result set.
@@ -149,52 +149,52 @@ class DocumentBrowserQuery: NSObject {
         return results
     }
 
-    private func computeAnimationsForNewResults(newResults: NSOrderedSet, oldResults: NSOrderedSet, removedResults: NSOrderedSet, addedResults: NSOrderedSet, changedResults: NSOrderedSet) -> [DocumentBrowserAnimation] {
+    fileprivate func computeAnimationsForNewResults(_ newResults: NSOrderedSet, oldResults: NSOrderedSet, removedResults: NSOrderedSet, addedResults: NSOrderedSet, changedResults: NSOrderedSet) -> [DocumentBrowserAnimation] {
         /*
            From two sets of result objects, create an array of animations that
            should be run to morph old into new results.
         */
         
         let oldResultAnimations: [DocumentBrowserAnimation] = removedResults.array.flatMap { removedResult in
-            let oldIndex = oldResults.indexOfObject(removedResult)
+            let oldIndex = oldResults.index(of: removedResult)
             
             guard oldIndex != NSNotFound else { return nil }
             
-            return .Delete(index: oldIndex)
+            return .delete(index: oldIndex)
         }
         
         let newResultAnimations: [DocumentBrowserAnimation] = addedResults.array.flatMap { addedResult in
-            let newIndex = newResults.indexOfObject(addedResult)
+            let newIndex = newResults.index(of: addedResult)
             
             guard newIndex != NSNotFound else { return nil }
             
-            return .Add(index: newIndex)
+            return .add(index: newIndex)
         }
 
         let movedResultAnimations: [DocumentBrowserAnimation] = changedResults.array.flatMap { movedResult in
-            let newIndex = newResults.indexOfObject(movedResult)
-            let oldIndex = oldResults.indexOfObject(movedResult)
+            let newIndex = newResults.index(of: movedResult)
+            let oldIndex = oldResults.index(of: movedResult)
             
             guard newIndex != NSNotFound else { return nil }
             guard oldIndex != NSNotFound else { return nil }
             guard oldIndex != newIndex   else { return nil }
             
-            return .Move(fromIndex: oldIndex, toIndex: newIndex)
+            return .move(fromIndex: oldIndex, toIndex: newIndex)
         }
 
         // Find all the changed result animations.
         let changedResultAnimations: [DocumentBrowserAnimation] = changedResults.array.flatMap { changedResult in
-            let index = newResults.indexOfObject(changedResult)
+            let index = newResults.index(of: changedResult)
 
             guard index != NSNotFound else { return nil }
             
-            return .Update(index: index)
+            return .update(index: index)
         }
         
         return oldResultAnimations + changedResultAnimations + newResultAnimations + movedResultAnimations
     }
 
-    private func updateWithResults(results: NSOrderedSet, removedResults: NSOrderedSet, addedResults: NSOrderedSet, changedResults: NSOrderedSet) {
+    fileprivate func updateWithResults(_ results: NSOrderedSet, removedResults: NSOrderedSet, addedResults: NSOrderedSet, changedResults: NSOrderedSet) {
         /*
             From a set of new result objects, we compute the necessary animations
             if applicable, then call out to our delegate.
@@ -212,13 +212,13 @@ class DocumentBrowserQuery: NSObject {
             queryAnimations = computeAnimationsForNewResults(results, oldResults: oldResults, removedResults: removedResults, addedResults: addedResults, changedResults: changedResults)
         }
         else {
-            queryAnimations = [.Reload]
+            queryAnimations = [.reload]
         }
 
         // After computing updates, we hang on to the current results for the next round.
         previousQueryObjects = results
 
-        NSOperationQueue.mainQueue().addOperationWithBlock {
+        OperationQueue.main.addOperation {
             self.delegate?.documentBrowserQueryResultsDidChangeWithResults(queryResults, animations: queryAnimations)
         }
     }

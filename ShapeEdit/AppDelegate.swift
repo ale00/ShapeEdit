@@ -16,14 +16,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
     
     // MARK: - UIApplicationDelegate
 
-    func application(application: UIApplication, openURL url: NSURL, options: [String: AnyObject]) -> Bool {
+    func application(_ application: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey: Any]) -> Bool {
         /*
             `options[UIApplicationOpenURLOptionsOpenInPlaceKey]` will be set if 
             the app doesn't need to make a copy of the document to open or edit it.
             For example, the document could be in the ubiquitous container of the
             application.
         */
-        guard let shouldOpenInPlace = options[UIApplicationOpenURLOptionsOpenInPlaceKey] as? Bool else {
+        guard let shouldOpenInPlace = options[UIApplicationOpenURLOptionsKey.openInPlace] as? Bool else {
             return false
         }
         
@@ -35,7 +35,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
             return false
         }
         
-        documentBrowserController.openDocumentAtURL(url, copyBeforeOpening: !shouldOpenInPlace.boolValue)
+        documentBrowserController.openDocumentAtURL(url, copyBeforeOpening: !shouldOpenInPlace)
 
         return true
     }

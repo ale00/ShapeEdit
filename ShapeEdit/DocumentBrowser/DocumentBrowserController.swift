@@ -36,8 +36,8 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
     
     let thumbnailCache = ThumbnailCache(thumbnailSize: CGSize(width: 220, height: 270))
     
-    private let coordinationQueue: NSOperationQueue = {
-        let coordinationQueue = NSOperationQueue()
+    fileprivate let coordinationQueue: OperationQueue = {
+        let coordinationQueue = OperationQueue()
         
         coordinationQueue.name = "com.example.apple-samplecode.ShapeEdit.documentbrowser.coordinationQueue"
         
@@ -57,33 +57,33 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
         title = "My Favorite Shapes & Colors"
     }
 
-    override func viewDidAppear(animated: Bool) {
+    override func viewDidAppear(_ animated: Bool) {
         /*
             Our app only supports iCloud Drive so display an error message when 
             it is disabled.
         */
-        if NSFileManager().ubiquityIdentityToken == nil {
-            let alertController = UIAlertController(title: "iCloud is disabled", message: "Please enable iCloud Drive in Settings to use this app", preferredStyle: .Alert)
+        if FileManager().ubiquityIdentityToken == nil {
+            let alertController = UIAlertController(title: "iCloud is disabled", message: "Please enable iCloud Drive in Settings to use this app", preferredStyle: .alert)
             
-            let alertAction = UIAlertAction(title: "Dismiss", style: .Default, handler: nil)
+            let alertAction = UIAlertAction(title: "Dismiss", style: .default, handler: nil)
             
             alertController.addAction(alertAction)
             
-            presentViewController(alertController, animated: true, completion: nil)
+            present(alertController, animated: true, completion: nil)
         }
     }
 
-    @IBAction func insertNewObject(sender: UIBarButtonItem) {
+    @IBAction func insertNewObject(_ sender: UIBarButtonItem) {
         // Create a document with the default template.
-        let templateURL = NSBundle.mainBundle().URLForResource("Template", withExtension: DocumentBrowserController.documentExtension)!
+        let templateURL = Bundle.main.url(forResource: "Template", withExtension: DocumentBrowserController.documentExtension)!
 
         createNewDocumentWithTemplate(templateURL)
     }
     
     // MARK: - DocumentBrowserQueryDelegate
 
-    func documentBrowserQueryResultsDidChangeWithResults(results: [DocumentBrowserModelObject], animations: [DocumentBrowserAnimation]) {
-        if animations == [.Reload] {
+    func documentBrowserQueryResultsDidChangeWithResults(_ results: [DocumentBrowserModelObject], animations: [DocumentBrowserAnimation]) {
+        if animations == [.reload] {
             /*
                 Reload means we're reloading all items, so mark all thumbnails
                 dirty and reload the collection view.
@@ -93,7 +93,7 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
             collectionView?.reloadData()
         }
         else {
-            var indexPathsNeedingReload = [NSIndexPath]()
+            var indexPathsNeedingReload = [IndexPath]()
             
             let collectionView = self.collectionView!
 
@@ -108,7 +108,7 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
                 self.documents = results
             }, completion: { success in
                 if success {
-                    collectionView.reloadItemsAtIndexPaths(indexPathsNeedingReload)
+                    collectionView.reloadItems(at: indexPathsNeedingReload)
                 }
             })
         }
@@ -116,16 +116,16 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
 
     // MARK: - RecentModelObjectsManagerDelegate
     
-    func recentsManagerResultsDidChange(results: [RecentModelObject], animations: [DocumentBrowserAnimation]) {
-        if animations == [.Reload] {
+    func recentsManagerResultsDidChange(_ results: [RecentModelObject], animations: [DocumentBrowserAnimation]) {
+        if animations == [.reload] {
             recents = results
             
-            let indexSet = NSIndexSet(index: DocumentBrowserController.recentsSection)
+            let indexSet = IndexSet(integer: DocumentBrowserController.recentsSection)
 
             collectionView?.reloadSections(indexSet)
         }
         else {
-            var indexPathsNeedingReload = [NSIndexPath]()
+            var indexPathsNeedingReload = [IndexPath]()
 
             let collectionView = self.collectionView!
             collectionView.performBatchUpdates({
@@ -139,7 +139,7 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
                 self.recents = results
             }, completion: { success in
                 if success {
-                    collectionView.reloadItemsAtIndexPaths(indexPathsNeedingReload)
+                    collectionView.reloadItems(at: indexPathsNeedingReload)
                 }
             })
         }
@@ -147,42 +147,42 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
     
     // MARK: - Animation Support
 
-    private func processAnimations<ModelType: ModelObject>(animations: [DocumentBrowserAnimation], oldResults: [ModelType], newResults: [ModelType], section: Int) -> [NSIndexPath] {
+    fileprivate func processAnimations<ModelType: ModelObject>(_ animations: [DocumentBrowserAnimation], oldResults: [ModelType], newResults: [ModelType], section: Int) -> [IndexPath] {
         let collectionView = self.collectionView!
         
-        var indexPathsNeedingReload = [NSIndexPath]()
+        var indexPathsNeedingReload = [IndexPath]()
         
         for animation in animations {
             switch animation {
-                case .Add(let row):
-                    collectionView.insertItemsAtIndexPaths([
-                        NSIndexPath(forRow: row, inSection: section)
+                case .add(let row):
+                    collectionView.insertItems(at: [
+                        IndexPath(row: row, section: section)
                     ])
                 
-                case .Delete(let row):
-                    collectionView.deleteItemsAtIndexPaths([
-                        NSIndexPath(forRow: row, inSection: section)
+                case .delete(let row):
+                    collectionView.deleteItems(at: [
+                        IndexPath(row: row, section: section)
                     ])
                     
                     let URL = oldResults[row].URL
                     self.thumbnailCache.removeThumbnailForURL(URL)
                     
-                case .Move(let from, let to):
-                    let fromIndexPath = NSIndexPath(forRow: from, inSection: section)
+                case .move(let from, let to):
+                    let fromIndexPath = IndexPath(row: from, section: section)
                     
-                    let toIndexPath = NSIndexPath(forRow: to, inSection: section)
+                    let toIndexPath = IndexPath(row: to, section: section)
                     
-                    collectionView.moveItemAtIndexPath(fromIndexPath, toIndexPath: toIndexPath)
+                    collectionView.moveItem(at: fromIndexPath, to: toIndexPath)
                 
-                case .Update(let row):
+                case .update(let row):
                     indexPathsNeedingReload += [
-                        NSIndexPath(forRow: row, inSection: section)
+                        IndexPath(row: row, section: section)
                     ]
                     
                     let URL = newResults[row].URL
                     self.thumbnailCache.markThumbnailDirtyForURL(URL)
                     
-                case .Reload:
+                case .reload:
                     fatalError("Unreachable")
             }
         }
@@ -192,29 +192,29 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
 
     // MARK: - ThumbnailCacheDelegateType
     
-    func thumbnailCache(thumbnailCache: ThumbnailCache, didLoadThumbnailsForURLs URLs: Set<NSURL>) {
-        let documentPaths: [NSIndexPath] = URLs.flatMap { URL in
-            guard let matchingDocumentIndex = documents.indexOf({ $0.URL == URL }) else { return nil }
+    func thumbnailCache(_ thumbnailCache: ThumbnailCache, didLoadThumbnailsForURLs URLs: Set<URL>) {
+        let documentPaths: [IndexPath] = URLs.flatMap { URL in
+            guard let matchingDocumentIndex = documents.index(where: { $0.URL as URL == URL }) else { return nil }
             
-            return NSIndexPath(forItem: matchingDocumentIndex, inSection: DocumentBrowserController.documentsSection)
+            return IndexPath(item: matchingDocumentIndex, section: DocumentBrowserController.documentsSection)
         }
         
-        let recentPaths: [NSIndexPath] = URLs.flatMap { URL in
-            guard let matchingRecentIndex = recents.indexOf({ $0.URL == URL }) else { return nil }
+        let recentPaths: [IndexPath] = URLs.flatMap { URL in
+            guard let matchingRecentIndex = recents.index(where: { $0.URL as URL == URL }) else { return nil }
             
-            return NSIndexPath(forItem: matchingRecentIndex, inSection: DocumentBrowserController.recentsSection)
+            return IndexPath(item: matchingRecentIndex, section: DocumentBrowserController.recentsSection)
         }
         
-        self.collectionView!.reloadItemsAtIndexPaths(documentPaths + recentPaths)
+        self.collectionView!.reloadItems(at: documentPaths + recentPaths)
     }
 
     // MARK: - Collection View
 
-    override func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
+    override func numberOfSections(in collectionView: UICollectionView) -> Int {
         return 2
     }
 
-    override func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         if section == DocumentBrowserController.recentsSection {
             return recents.count
         }
@@ -222,8 +222,8 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
         return documents.count
     }
 
-    override func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCellWithReuseIdentifier("Cell", forIndexPath: indexPath) as! DocumentCell
+    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "Cell", for: indexPath) as! DocumentCell
 
         let document = documentForIndexPath(indexPath)
         
@@ -235,35 +235,35 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
         return cell
     }
 
-    override func collectionView(collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, atIndexPath indexPath: NSIndexPath) -> UICollectionReusableView {
+    override func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         if kind == UICollectionElementKindSectionHeader {
-            let header = collectionView.dequeueReusableSupplementaryViewOfKind(UICollectionElementKindSectionHeader, withReuseIdentifier: "Header", forIndexPath: indexPath) as! HeaderView
+            let header = collectionView.dequeueReusableSupplementaryView(ofKind: UICollectionElementKindSectionHeader, withReuseIdentifier: "Header", for: indexPath) as! HeaderView
 
             header.title = indexPath.section == DocumentBrowserController.recentsSection ? "Recently Viewed" : "All Shapes"
             
             return header
         }
 
-        return super.collectionView(collectionView, viewForSupplementaryElementOfKind: kind, atIndexPath: indexPath)
+        return super.collectionView(collectionView, viewForSupplementaryElementOfKind: kind, at: indexPath)
     }
     
-    override func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
+    override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         // Locate the selected document and open it.
         let document = documentForIndexPath(indexPath)
 
-        openDocumentAtURL(document.URL)
+        openDocumentAtURL(document.URL as URL)
     }
     
-    override func collectionView(collectionView: UICollectionView, didEndDisplayingCell cell: UICollectionViewCell, forItemAtIndexPath indexPath: NSIndexPath) {
+    override func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         let document = documentForIndexPath(indexPath)
         
-        let visibleURLs: [NSURL] = collectionView.indexPathsForVisibleItems().map { indexPath in
+        let visibleURLs: [URL] = collectionView.indexPathsForVisibleItems.map { indexPath in
             let document = documentForIndexPath(indexPath)
             
-            return document.URL
+            return document.URL as URL
         }
         
-        if !visibleURLs.contains(document.URL) {
+        if !visibleURLs.contains(document.URL as URL) {
             thumbnailCache.cancelThumbnailLoadForURL(document.URL)
         }
     }
@@ -271,13 +271,13 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
     
     // MARK: - Document handling support
         
-    private func documentBrowserModelObjectForURL(url: NSURL) -> DocumentBrowserModelObject? {
-        guard let matchingDocumentIndex = documents.indexOf({ $0.URL == url }) else { return nil }
+    fileprivate func documentBrowserModelObjectForURL(_ url: URL) -> DocumentBrowserModelObject? {
+        guard let matchingDocumentIndex = documents.index(where: { $0.URL as URL == url }) else { return nil }
         
         return documents[matchingDocumentIndex]
     }
 
-    private func documentForIndexPath(indexPath: NSIndexPath) -> ModelObject {
+    fileprivate func documentForIndexPath(_ indexPath: IndexPath) -> ModelObject {
         if indexPath.section == DocumentBrowserController.recentsSection {
             return recents[indexPath.row]
         }
@@ -288,33 +288,33 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
         fatalError("Unknown section.")
     }
     
-    private func presentCloudDisabledAlert() {
-        NSOperationQueue.mainQueue().addOperationWithBlock {
-            let alertController = UIAlertController(title: "iCloud is disabled", message: "Please enable iCloud Drive in Settings to use this app", preferredStyle: .Alert)
+    fileprivate func presentCloudDisabledAlert() {
+        OperationQueue.main.addOperation {
+            let alertController = UIAlertController(title: "iCloud is disabled", message: "Please enable iCloud Drive in Settings to use this app", preferredStyle: .alert)
             
-            let alertAction = UIAlertAction(title: "Dismiss", style: .Default, handler: nil)
+            let alertAction = UIAlertAction(title: "Dismiss", style: .default, handler: nil)
             
             alertController.addAction(alertAction)
             
-            self.presentViewController(alertController, animated: true, completion: nil)
+            self.present(alertController, animated: true, completion: nil)
         }
     }
     
-    private func createNewDocumentWithTemplate(templateURL: NSURL) {
+    fileprivate func createNewDocumentWithTemplate(_ templateURL: URL) {
         /*
             We don't create a new document on the main queue because the call to
             fileManager.URLForUbiquityContainerIdentifier could potentially block
         */
-        coordinationQueue.addOperationWithBlock {
-            let fileManager = NSFileManager()
-            guard let baseURL = fileManager.URLForUbiquityContainerIdentifier(nil)?.URLByAppendingPathComponent("Documents")!.URLByAppendingPathComponent("Untitled") else {
+        coordinationQueue.addOperation {
+            let fileManager = FileManager()
+            guard let baseURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents").appendingPathComponent("Untitled") else {
                 
                 self.presentCloudDisabledAlert()
                 
                 return
             }
 
-            var target = baseURL.URLByAppendingPathExtension(DocumentBrowserController.documentExtension)
+            var target = baseURL.appendingPathExtension(DocumentBrowserController.documentExtension)
             
             /*
                 We will append this value to our name until we find a path that
@@ -327,29 +327,29 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
                 Do not use `fileManager.fileExistsAtPath(target.path!)` because
                 the document might not have downloaded yet.
             */
-            while target!.checkPromisedItemIsReachableAndReturnError(nil) {
-                target = NSURL(fileURLWithPath: baseURL.path! + "-\(nameSuffix).\(DocumentBrowserController.documentExtension)")
+            while (target as NSURL).checkPromisedItemIsReachableAndReturnError(nil) {
+                target = URL(fileURLWithPath: baseURL.path + "-\(nameSuffix).\(DocumentBrowserController.documentExtension)")
 
                 nameSuffix += 1
             }
             
             // Coordinate reading on the source path and writing on the destination path to copy.
-            let readIntent = NSFileAccessIntent.readingIntentWithURL(templateURL, options: [])
+            let readIntent = NSFileAccessIntent.readingIntent(with: templateURL, options: [])
 
-            let writeIntent = NSFileAccessIntent.writingIntentWithURL(target!, options: .ForReplacing)
+            let writeIntent = NSFileAccessIntent.writingIntent(with: target, options: .forReplacing)
             
-            NSFileCoordinator().coordinateAccessWithIntents([readIntent, writeIntent], queue: self.coordinationQueue) { error in
+            NSFileCoordinator().coordinate(with: [readIntent, writeIntent], queue: self.coordinationQueue) { error in
                 if error != nil {
                     return
                 }
                 
                 do {
-                    try fileManager.copyItemAtURL(readIntent.URL, toURL: writeIntent.URL)
+                    try fileManager.copyItem(at: readIntent.url, to: writeIntent.url)
                     
-                    try writeIntent.URL.setResourceValue(true, forKey: NSURLHasHiddenExtensionKey)
+                    try (writeIntent.url as NSURL).setResourceValue(true, forKey: URLResourceKey.hasHiddenExtensionKey)
                     
-                    NSOperationQueue.mainQueue().addOperationWithBlock {
-                        self.openDocumentAtURL(writeIntent.URL)
+                    OperationQueue.main.addOperation {
+                        self.openDocumentAtURL(writeIntent.url)
                     }
                 }
                 catch {
@@ -361,20 +361,20 @@ class DocumentBrowserController: UICollectionViewController, DocumentBrowserQuer
     
     // MARK: - Document Opening
     
-    func documentWasOpenedSuccessfullyAtURL(URL: NSURL) {
+    func documentWasOpenedSuccessfullyAtURL(_ URL: Foundation.URL) {
         recentsManager.addURLToRecents(URL)
     }
     
-    func openDocumentAtURL(url: NSURL) {
+    func openDocumentAtURL(_ url: URL) {
         // Push a view controller which will manage editing the document.
-        let controller = storyboard!.instantiateViewControllerWithIdentifier("Document") as! DocumentViewController
+        let controller = storyboard!.instantiateViewController(withIdentifier: "Document") as! DocumentViewController
 
         controller.documentURL = url
         
-        showViewController(controller, sender: self)
+        show(controller, sender: self)
     }
 
-    func openDocumentAtURL(url: NSURL, copyBeforeOpening: Bool) {
+    func openDocumentAtURL(_ url: URL, copyBeforeOpening: Bool) {
         if copyBeforeOpening  {
             // Duplicate the document and open it.
             createNewDocumentWithTemplate(url)

@@ -24,7 +24,7 @@ class DocumentCell: UICollectionViewCell {
     var thumbnail: UIImage? {
         didSet {
             imageView.image = thumbnail
-            contentView.backgroundColor = thumbnail != nil ? UIColor.whiteColor() : UIColor.lightGrayColor()
+            contentView.backgroundColor = thumbnail != nil ? UIColor.white : UIColor.lightGray
         }
     }
     

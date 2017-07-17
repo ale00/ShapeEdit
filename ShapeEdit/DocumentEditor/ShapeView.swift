@@ -35,7 +35,7 @@ class ShapeView: SCNView {
 
     // MARK: - Override
 
-    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         /*
             The user finished interacting with the shape for now, so notify the
             document that changes happened so that it writes the new document
