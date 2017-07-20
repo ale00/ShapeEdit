@@ -22,7 +22,7 @@ protocol RecentModelObjectDelegate: class {
     as a file presenter and as such is notified when the recent changes on
     disk.  It forwards these notifications on to its delegate.
 */
-class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
+class RecentModelObject: NSObject, NSFilePresenter, ModelObject, Codable {
     // MARK: - Properties
 
     weak var delegate: RecentModelObjectDelegate?
@@ -71,7 +71,8 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
             return nil
         }
     }
-
+	
+	@objc
     required init?(coder aDecoder: NSCoder) {
         do {
             displayName = aDecoder.decodeObject(of: NSString.self, forKey: RecentModelObject.displayNameKey)! as String
@@ -124,13 +125,14 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
             return nil
         }
     }
-    
+	
+	@objc
     func encodeWithCoder(_ aCoder: NSCoder) {
         do {
             aCoder.encode(displayName, forKey: RecentModelObject.displayNameKey)
-            
+			
             aCoder.encode(subtitle, forKey: RecentModelObject.subtitleKey)
-            
+			
             if bookmarkDataNeedsSave {
                 /*
                     Encode our URL into a security scoped bookmark.  We need to be sure
@@ -141,13 +143,79 @@ class RecentModelObject: NSObject, NSFilePresenter, ModelObject {
                 
                 self.bookmarkDataNeedsSave = false
             }
-            
+			
             aCoder.encode(bookmarkData, forKey: RecentModelObject.bookmarkKey)
         }
         catch {
             print("bookmark for \(displayName) failed to encode: \(error).")
         }
     }
+	
+	// MARK: - Codable
+	
+	enum CodingKeys: String, CodingKey {
+		case displayName
+		case subtitle
+		case bookmarkData
+	}
+	
+	required init(from decoder: Decoder) throws {
+		let values = try decoder.container(keyedBy: CodingKeys.self)
+		
+		displayName = try values.decode(String.self, forKey: .displayName)
+		
+		subtitle = try values.decode(String.self, forKey: .subtitle)
+		
+		// Decode bookmark into a URL
+		var bookmarkDataIsStale: ObjCBool = false
+		
+		guard let bookmarkData = try? values.decode(Data.self, forKey: .bookmarkData) else {
+			throw ShapeEditError.bookmarkResolveFailed
+		}
+		
+		URL = try (NSURL.init(resolvingBookmarkData: bookmarkData, options: NSURL.BookmarkResolutionOptions.withoutUI, relativeTo: nil, bookmarkDataIsStale: &bookmarkDataIsStale) as URL)
+		
+		/*
+		The URL is security-scoped for external documents, which live outside
+		of the application's sandboxed container.
+		*/
+		isSecurityScoped = URL.startAccessingSecurityScopedResource()
+		
+		if bookmarkDataIsStale.boolValue {
+			self.bookmarkDataNeedsSave = true
+			
+			print("\(URL) is stale.")
+		}
+		
+		super.init()
+		
+		do {
+			try self.refreshNameAndSubtitle()
+		}
+		catch {
+			// Ignore the error, use the stale display name.
+		}
+	}
+	
+	public func encode(to encoder: Encoder) throws {
+		var container = encoder.container(keyedBy: CodingKeys.self)
+		
+		try container.encode(displayName, forKey: .displayName)
+		try container.encode(subtitle, forKey: .subtitle)
+		
+		if bookmarkDataNeedsSave {
+			/*
+			Encode our URL into a security scoped bookmark.  We need to be sure
+			to mark the bookmark as suitable for a bookmark file or it won't
+			resolve properly.
+			*/
+			bookmarkData = try URL.bookmarkData(options: .suitableForBookmarkFile, includingResourceValuesForKeys: nil, relativeTo: nil)
+			
+			self.bookmarkDataNeedsSave = false
+		}
+		
+		try container.encode(bookmarkData, forKey: .bookmarkData)
+	}
 
     // MARK: - NSFilePresenter Notifications
     

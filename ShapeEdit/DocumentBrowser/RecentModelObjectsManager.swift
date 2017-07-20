@@ -75,6 +75,8 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
             }
             
             let loadedRecents = loadedRecentData.flatMap { recentModelObjectData in
+//				TODO: - Implement new APIs
+//				return NSKeyedUnarchiver.decodeCodable..
                 return NSKeyedUnarchiver.unarchiveObject(with: recentModelObjectData) as? RecentModelObject
             }
             
@@ -110,6 +112,8 @@ class RecentModelObjectsManager: RecentModelObjectDelegate {
     
     fileprivate func saveRecents() {
         let recentModels = recentModelObjects.map { recentModelObject in
+//			TODO: - Implement new APIs
+//			return NSKeyedArchiver.encodeCodable..
             return NSKeyedArchiver.archivedData(withRootObject: recentModelObject)
         }
         

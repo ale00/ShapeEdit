@@ -10,7 +10,7 @@ import UIKit
 import SceneKit
 
 /// We save and restore the camera state as an object to be able to use `NSCoding`.
-class CameraState: NSObject, NSCoding {
+class CameraState: NSObject, NSCoding, Codable {
     // MARK: - Properties
     
     var position: SCNVector3!
@@ -24,7 +24,48 @@ class CameraState: NSObject, NSCoding {
         
         super.init()
     }
-    
+
+	// MARK: - Codable
+	
+	enum CodingKeys: String, CodingKey {
+		case x
+		case y
+		case z
+		case rx
+		case ry
+		case rz
+		case rw
+	}
+	
+	required init(from decoder: Decoder) throws {
+		position = SCNVector3(0, 0, 4)
+		rotation = SCNVector4()
+		
+		let values = try decoder.container(keyedBy: CodingKeys.self)
+		
+		position.x = try values.decode(Float.self, forKey: .x)
+		position.y = try values.decode(Float.self, forKey: .y)
+		position.z = try values.decode(Float.self, forKey: .z)
+		rotation.x = try values.decode(Float.self, forKey: .rx)
+		rotation.y = try values.decode(Float.self, forKey: .ry)
+		rotation.z = try values.decode(Float.self, forKey: .rz)
+		rotation.w = try values.decode(Float.self, forKey: .rw)
+		
+		super.init()
+	}
+	
+	public func encode(to encoder: Encoder) throws {
+		var containter = encoder.container(keyedBy: CodingKeys.self)
+		
+		try containter.encode(position.x, forKey: .x)
+		try containter.encode(position.y, forKey: .y)
+		try containter.encode(position.z, forKey: .z)
+		try containter.encode(rotation.x, forKey: .rx)
+		try containter.encode(rotation.y, forKey: .ry)
+		try containter.encode(rotation.z, forKey: .rz)
+		try containter.encode(rotation.w, forKey: .rw)
+	}
+	
     // MARK: - NSCoding
     
     required init?(coder aDecoder: NSCoder) {
@@ -100,6 +141,7 @@ class ShapeDocument: UIDocument {
         shape = Shape(rawValue: shapeRawValue)
         
         // The camera state is saved using NSCoding.
+		//			TODO: - Implement new APIs
         if let cameraStateData = plist[ShapeDocument.cameraStateKey] as? Data,
               let cameraState = NSKeyedUnarchiver.unarchiveObject(with: cameraStateData) as? CameraState {
             self.cameraState = cameraState
@@ -117,7 +159,9 @@ class ShapeDocument: UIDocument {
             Saving the document consists of creating the property list, then 
             creating an `NSData` object using plist serialization.
         */
-        
+		
+//			TODO: - Implement new APIs
+//		let cameraStateData = NSKeyedArchiver.encodeCodable..
         let cameraStateData = NSKeyedArchiver.archivedData(withRootObject: cameraState)
         
         guard let shapeRawValue = shape?.rawValue else {
